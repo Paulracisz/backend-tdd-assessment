@@ -7,7 +7,7 @@ Students are expected to edit this module, to add more tests to run
 against the 'echo.py' program.
 """
 
-__author__ = "???"
+__author__ = "Paul Racisz"
 
 import sys
 import importlib
@@ -15,6 +15,7 @@ import inspect
 import argparse
 import unittest
 import subprocess
+import echo
 from io import StringIO
 
 # devs: change this to 'soln.echo' to run this suite against the solution
@@ -25,6 +26,7 @@ PKG_NAME = 'echo'
 # Students can use this class object in their code
 class Capturing(list):
     """Context Mgr helper for capturing stdout from a function call"""
+
     def __enter__(self):
         self._stdout = sys.stdout
         sys.stdout = self._stringio = StringIO()
@@ -47,7 +49,7 @@ def run_capture(pyfile, args=()):
     p = subprocess.Popen(
         cmd,
         stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
+    )
     stdout, stderr = p.communicate()
     stdout = stdout.decode().splitlines()
     stderr = stderr.decode().splitlines()
@@ -69,15 +71,15 @@ class TestEcho(unittest.TestCase):
         cls.funcs = {
             k: v for k, v in inspect.getmembers(
                 cls.module, inspect.isfunction
-                )
-            }
+            )
+        }
         # check the module for required functions
         assert "main" in cls.funcs, "Missing required function main()"
         assert "create_parser" in cls.funcs, "Missing required function create_parser()"
 
     def setUp(self):
         """Called by parent class ONCE before all tests are run"""
-        # your code here - use this space to create any instance variables
+        self.parser = echo.create_parser()
         # that will be visible to your other test methods
         pass
 
@@ -87,10 +89,6 @@ class TestEcho(unittest.TestCase):
         self.assertIsInstance(
             result, argparse.ArgumentParser,
             "create_parser() function is not returning a parser object")
-
-    #
-    # Students: add more parser tests here
-    #
 
     def test_echo(self):
         """Check if main() function prints anything at all"""
@@ -104,19 +102,99 @@ class TestEcho(unittest.TestCase):
         self.assertEqual(
             stdout[0], args[0],
             "The program is not performing simple echo"
-            )
+        )
 
     def test_lower_short(self):
         """Check if short option '-l' performs lowercasing"""
         args = ["-l", "HELLO WORLD"]
+        ns = self.parser.parse_args(args)
+        self.assertTrue(ns.lower)
         with Capturing() as output:
             self.module.main(args)
         assert output, "The program did not print anything."
         self.assertEqual(output[0], "hello world")
 
-    #
-    # Students: add more cmd line options tests here.
-    #
+    def test_lower_long(self):
+        """Check if short option '-l' performs lowercasing"""
+        args = ["--lower", "HELLO WORLD"]
+        ns = self.parser.parse_args(args)
+        self.assertTrue(ns.lower)
+        with Capturing() as output:
+            self.module.main(args)
+        assert output, "The program did not print anything."
+        self.assertEqual(output[0], "hello world")
+
+    def test_upper_short(self):
+        args = ["-u", "hello world"]
+        ns = self.parser.parse_args(args)
+        self.assertTrue(ns.upper)
+        with Capturing() as output:
+            self.module.main(args)
+        assert output, "The program did not print anything."
+        self.assertEqual(output[0], "HELLO WORLD")
+
+    def test_upper_long(self):
+        args = ["--upper", "hello world"]
+        ns = self.parser.parse_args(args)
+        self.assertTrue(ns.upper)
+        with Capturing() as output:
+            self.module.main(args)
+        assert output, "The program did not print anything."
+        self.assertEqual(output[0], "HELLO WORLD")
+
+    def test_title_short(self):
+        args = ["-t", "hello world"]
+        ns = self.parser.parse_args(args)
+        self.assertTrue(ns.title)
+        with Capturing() as output:
+            self.module.main(args)
+        assert output, "The program did not print anything."
+        self.assertEqual(output[0], "Hello World")
+
+    def test_title_long(self):
+        '''Testing'''
+        args = ["--title", "hello world"]
+        ns = self.parser.parse_args(args)
+        self.assertTrue(ns.title)
+        with Capturing() as output:
+            self.module.main(args)
+        assert output, "The program did not print anything."
+        self.assertEqual(output[0], "Hello World")
+
+    def test_all(self):
+        args = ["-tul", "heLLo"]
+        with Capturing() as output:
+            self.module.main(args)
+        assert output, "This program did not print anything"
+        self.assertEqual(output[0], "Hello")
+
+    def test_two_args(self):
+        args = ["-ul", "heLLo"]
+        with Capturing() as output:
+            self.module.main(args)
+        assert output, "This program did not print anything."
+        self.assertEqual(output[0], "hello")
+
+    def test_no_args(self):
+        args = ["Hello World"]
+        with Capturing() as output:
+            self.module.main(args)
+        assert output, "This program did not print anything."
+        self.assertEqual(output[0], "Hello World")
+
+    def test_help(self):
+        """Running the program without arguments should show usage."""
+
+    # Run the command `python ./echo.py -h` in a separate process, then
+    # collect its output.
+        process = subprocess.Popen(
+            ["python", "./echo.py", "-h"],
+            stdout=subprocess.PIPE)
+        stdout, _ = process.communicate()
+        with open("USAGE") as f:
+            usage = f.read()
+
+        self.assertEqual(stdout.decode(), usage)
 
 
 if __name__ == '__main__':
